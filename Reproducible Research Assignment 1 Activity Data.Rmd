@@ -1,0 +1,164 @@
+---
+title: "Reproducible Research Assignment 1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Set Up 
+Setting the Working Directory for the Assignment 
+```{r}
+getwd()
+setwd("~/Desktop/Reproducible Research/Assignment 1/Activity Monitoring Data ")
+```
+
+# 2. Loading and preprocessing the data
+```{r}
+activity <- read.csv("~/Desktop/Reproducible Research/Assignment 1/Activity Monitoring Data /activity.csv")
+```
+
+# 3. Exploring and analyzing the data
+Here we will xplore the inital data set a bit further 
+
+## 3.1 Summary statistics for the data set.
+Areas I was interested in were: 
+1.Head of the Data 
+2.Dimensions
+3.Structure
+4.Names of Variables 
+5.Summary Statistics
+
+```{r}
+head(activity)
+dim(activity)
+str(activity)
+names(activity)
+summary(activity)
+```
+Here we can see the that the total number of NA's in the activity dataset is 2304
+WE will have to convert the data to a date class before we can continue 
+
+```{r}
+activity$date <- as.Date(activity$date)
+str(activity)
+```
+
+## 3.2 Examining specific areas of the data set: 
+In this part, we will examine the following aspects:
+
+### 3.2.1 Total number of steps taken per day histogram. 
+
+First we will create a dataset that exlcudes any NA values
+
+```{r}
+activity_rm.na <- activity[which(!is.na(activity$steps)), ]
+```
+
+Next we need to create to aggregate the data per day for plotting the histogram
+
+```{r}
+daily <- tapply(activity_rm.na$steps, activity_rm.na$date, sum)
+```
+
+The total number of days depicted as a histogram. 
+```{r}
+par(mfrow = c(1, 1))
+hist(daily, 20, xlab = "Daily Steps", ylab = "Frequency", main = "Steps per Day", col = "blue")
+```
+
+### 3.2.2 Calculation of the mean and median of the total number of steps taken per day.
+
+```{r}
+mean(daily)
+median(daily)
+```
+
+### 3.2.3 Depiction of the daily activitiy pattern
+
+Here the average daily activity pattern needs to be depicted.
+```{r}
+mean_activity <- tapply(activity_rm.na$steps, activity_rm.na$interval, mean)
+plot(names(mean_activity), mean_activity, type = "l", xlab = "Interval", ylab = "Average Steps Taken", main = "Activity Pattern")
+```
+
+finding out the interval with the maximum number of steps: 
+
+```{r}
+mean_activity[mean_activity==max(mean_activity)]
+```
+
+## 4. Taking into account NA values and creation of a new data set that does not contain NAs
+As we have previously discovered, the presence of NAs in the data set introduces some negative bias to the data set. 
+From our previous analysis, we know that the variable activity has 2304 NA values. 
+Lets quickly reestablish that: 
+
+```{r}
+summary(activity$steps)
+```
+
+Now that we have reestablished that this is the case, let use the mean for the respective interval to deal with those values. 
+
+```{r}
+activity_new <- activity
+activity_new[which(is.na(activity_new$steps)), 1] <- mean_activity[as.character(activity_new[which(is.na(activity_new$steps)), 3])]
+sum(is.na(activity_new))
+```
+As we can see, we have successfully removed any NA values that were present in our data set. 
+
+Creating the Histogram: 
+
+```{r}
+daily_new <- tapply(activity_new$steps, activity_new$date,sum)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+hist(daily, 20, xlab = "Daily Steps", ylab = "Frequency", main = "Steps per Day", col = 4)
+abline(v = median(daily), col = 2, lwd = 2)
+hist(daily_new, 20, xlab = "Steps per Day", ylab = "Frequency", main = "Total Number of Steps Taken Per day 
+     with missing values replaced", col = 4, lwd = 2)
+abline(v = median(daily_new), col = 2, lwd = 2)
+```
+
+Having dealt with the NA values, allows us to compute the new summary statistics also being able to look at how these changed after accounting for the missing values (only minor differnce)
+
+```{r}
+summary(daily)
+summary(daily_new)
+summary(daily)-summary(daily_new)
+```
+
+## 5. Examining the differences in activity patterns between week days and week ends.
+
+In this part we will examine if there are any differences in the activity patterns for week days and week ends. As such we will do the following: 
+
+```{r}
+activity_new$wd<-weekdays(activity_new$date)
+activity_new$fwd<- as.factor(c("weekend", "weekday"))
+activity_new[activity_new$wd == "Sunday" | activity_new$wd == "Saturday" ,5]<- factor("weekend")
+activity_new[!(activity_new$wd == "Sunday" | activity_new$wd == "Saturday"),5 ]<- factor("weekday")
+```
+
+Creating the Plot 
+
+```{r}
+activity_new_we <- subset(activity_new, fwd == "weekend") 
+activity_new_wd <- subset(activity_new, fwd == "weekday") 
+dailyactivity_we<-tapply(activity_new_we$steps, activity_new_we$interval, mean)
+dailyactivity_wd<-tapply(activity_new_wd$steps, activity_new_wd$interval, mean)
+par(mfrow=c(1,2))
+plot(y = dailyactivity_wd, x = names(dailyactivity_wd), type = "l", xlab = "5-Minute Interval", 
+     main = "Daily Activity Pattern on Weekdays", ylab = "Average number of steps", 
+     ylim =c(0, 250))
+abline(v = median(dailyactivity_wd), col = 2, lwd = 2)
+plot(y = dailyactivity_we, x = names(dailyactivity_we), type = "l", xlab = "5-Minute Interval", 
+     main = "Daily Activity Pattern on Weekends", ylab = "Average number of steps", 
+     ylim =c(0, 250))
+abline(v = median(dailyactivity_we), col = 2, lwd = 2)
+```
+
+Findings: 
+From this we can see that the distribution is quite different between the two, with more steps taken on the week days. 
+The distribution of activity levels is more evely distributed on the week ends. 
